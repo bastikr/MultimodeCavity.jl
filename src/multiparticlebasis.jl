@@ -9,7 +9,7 @@ function distribute_bosons(Nparticles::Int, Nlevels::Int, index::Int=1, occupati
         occupations[index] = Nparticles
         push!(results, copy(occupations))
     else
-        for n=0:Nparticles
+        for n=Nparticles:-1:0
             occupations[index] = n
             distribute_bosons(Nparticles-n, Nlevels, index+1, occupations, results)
         end
@@ -25,7 +25,7 @@ function distribute_fermions(Nparticles::Int, Nlevels::Int, index::Int=1, occupa
         occupations[index] = Nparticles
         push!(results, copy(occupations))
     else
-        for n=0:min(1,Nparticles)
+        for n=min(1,Nparticles):-1:0
             occupations[index] = n
             distribute_fermions(Nparticles-n, Nlevels, index+1, occupations, results)
         end
@@ -40,7 +40,7 @@ type BosonicBasis <: NParticleBasis
     Nparticles::Int
     Nlevels::Int
     occupations::Vector{Vector{Int}}
-    BosonicBasis(Nlevels, occupations) = new([length(occupations)], Nparticles, Nlevels, occupations)    
+    BosonicBasis(Nparticles, Nlevels, occupations) = new([length(occupations)], Nparticles, Nlevels, occupations)    
 end
 
 type FermionicBasis <: NParticleBasis
@@ -54,7 +54,7 @@ end
 BosonicBasis(Nparticles::Int, Nlevels::Int) = BosonicBasis(Nparticles, Nlevels, distribute_bosons(Nparticles, Nlevels))
 FermionicBasis(Nparticles::Int, Nlevels::Int) = FermionicBasis(Nparticles, Nlevels, distribute_fermions(Nparticles, Nlevels))
 
-
+=={T<:NParticleBasis}(b1::T, b2::T) = (b1.Nparticles==b2.Nparticles && b1.Nlevels==b2.Nlevels)
 
 function cdaggeri_cj(m::Int,n::Int,occ_m::Vector{Int},occ_n::Vector{Int})
     idx_create = 0
@@ -69,13 +69,13 @@ function cdaggeri_cj(m::Int,n::Int,occ_m::Vector{Int},occ_n::Vector{Int})
                 return 0, 0
             end
             idx_destroy = i
-            N_destroy = occ_n[i]+1
+            N_destroy = occ_n[i]
         elseif delta==1
             if idx_create != 0
                 return 0, 0
             end
             idx_create = i
-            N_create = occ_m[i]+1
+            N_create = occ_n[i]+1
         else
             return 0, 0
         end
@@ -95,8 +95,9 @@ function weighted_cdaggeri_cj(basis::NParticleBasis, f::Function)
         end
         idx_create, idx_destroy = cdaggeri_cj(m, n, basis.occupations[m], basis.occupations[n])
         if idx_create!=0 && idx_destroy!=0
-            Ni = basis.occupations[n][idx_create]+1
-            Nj = basis.occupations[n][idx_destroy]
+            Ni = basis.occupations[n][idx_create]
+            Nj = basis.occupations[n][idx_destroy]+1
+            #println("Ni=",Ni,";Nj=",Nj,": f(",idx_create,",",idx_destroy,") = ",f(idx_create,idx_destroy))
             x[m,n] += f(idx_create,idx_destroy)*sqrt(Ni*Nj)
         end
     end
