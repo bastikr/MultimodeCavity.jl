@@ -44,7 +44,7 @@ type MultimodeSystem
     particles::Particle
     modes::Vector{CavityMode}
     basis::CompositeBasis
-    MultimodeSystem(scaling, particles, modes) = new(scaling, particles, modes, bases.compose(particles.basis, [m.basis for m=modes]...))
+    MultimodeSystem(scaling, particles, modes) = new(scaling, particles, modes, CompositeBasis(particles.basis, [m.basis for m=modes]...))
 end
 
 const _cicj = multiparticlebasis.weighted_cdaggeri_cj
@@ -115,31 +115,53 @@ end
 E0 = 0.2
 s = 0.25
 Nparticles = 1
-Nparticlemodes = 20
+Nparticlemodes = 15
 
-index0 = 12
-cavitymodes0 = 20
-delta0 = -4.
-eta0 = 4.5
-kappa0 = 1.
-U0 = -2.
+index1 = 12
+cavitymodes1 = 8
+delta1 = -4.
+eta1 = 4.5
+kappa1 = 1.
+U0_1 = -2.
+
+index2 = 20
+cavitymodes2 = 8
+delta2 = -4.
+eta2 = 4.5
+kappa2 = 1.
+U0_2 = -2.
 
 particle = Bosons(Nparticles, Nparticlemodes, E0, BoxPotential)
-mode1 = CavityMode(index0, cavitymodes0, delta0, eta0, kappa0, U0)
-system = MultimodeSystem(s, particle, [mode1])
+mode1 = CavityMode(index1, cavitymodes1, delta1, eta1, kappa1, U0_1)
+mode2 = CavityMode(index2, cavitymodes2, delta2, eta2, kappa2, U0_2)
+system = MultimodeSystem(s, particle, [mode1, mode2])
 
+println("Calculate Hamiltonian")
 H = Hamiltonian(system)
+@time H = Hamiltonian(system)
+Hdagger = dagger(H)
 
+
+println("Calculate Jump operators")
 J = JumpOperators(system)
+@time J = JumpOperators(system)
 Jdagger = map(dagger, J)
+
+println("Calculate non-hermitian operators")
+Hnh = H - 0.5im*Jdagger[1]*J[1] - 0.5im*Jdagger[2]*J[2] 
+Hnh_dagger = dagger(Hnh)
+
+println("Calculate sparse operators")
 J_sparse = map(operators_sparse.SparseOperator, J)
+@time J_sparse = map(operators_sparse.SparseOperator, J)
 Jdagger_sparse = map(operators_sparse.SparseOperator, Jdagger)
+@time Jdagger_sparse = map(operators_sparse.SparseOperator, Jdagger)
 
 #Hnh = H - 0.5im*sum([Jdagger[i]*J[i] for i=1:length(J)])
-Hnh = H - 0.5im*Jdagger[1]*J[1]
-Hnh_dagger = dagger(Hnh)
 Hnh_sparse = operators_sparse.SparseOperator(Hnh)
+@time Hnh_sparse = operators_sparse.SparseOperator(Hnh)
 Hnh_dagger_sparse = operators_sparse.SparseOperator(Hnh_dagger)
+@time Hnh_dagger_sparse = operators_sparse.SparseOperator(Hnh_dagger)
 
 
 
@@ -147,17 +169,19 @@ Hnh_dagger_sparse = operators_sparse.SparseOperator(Hnh_dagger)
 ρ₀ = Ψ₀⊗dagger(Ψ₀)
 T = [0,1]
 
+
+println("Solve system")
 # tout, ρ = timeevolution.master(T, ρ₀, H, J)
 # @time tout, ρ = timeevolution.master(T, ρ₀, H, J)
 # tout, ρnh = timeevolution.master_nh(T, ρ₀, Hnh, J; Jdagger=Jdagger, Hdagger=Hnh_dagger)
 # @time tout, ρnh = timeevolution.master_nh(T, ρ₀, Hnh, J; Jdagger=Jdagger, Hdagger=Hnh_dagger)
-tout, ρnh_sparse = timeevolution.master_nh(T, ρ₀, Hnh_sparse, J_sparse; Jdagger=Jdagger_sparse, Hdagger=Hnh_dagger_sparse)
+@time tout, ρnh_sparse = timeevolution.master_nh(T, ρ₀, Hnh_sparse, J_sparse; Jdagger=Jdagger_sparse, Hdagger=Hnh_dagger_sparse)
 @time tout, ρnh_sparse = timeevolution.master_nh(T, ρ₀, Hnh_sparse, J_sparse; Jdagger=Jdagger_sparse, Hdagger=Hnh_dagger_sparse)
 
 
-println("<H> = ", expect(H, ρ[end]))
+# println("<H> = ", expect(H, ρ[end]))
 println("<H> = ", expect(H, ρnh_sparse[end]))
-println("<H> = ", expect(H, ρnh_sparse[end]))
+# println("<H> = ", expect(H, ρnh_sparse[end]))
 
 
 end
