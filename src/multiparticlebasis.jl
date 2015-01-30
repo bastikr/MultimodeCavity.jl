@@ -1,6 +1,6 @@
 module multiparticlebasis
 
-export NParticleBasis, BosonicBasis, FermionicBasis, weighted_cdaggeri_cj
+export NParticleBasis, BosonicBasis, FermionicBasis, weighted_cdaggeri_cj, cdaggeri_cj, particledensity
 
 using quantumoptics
 
@@ -97,7 +97,6 @@ function weighted_cdaggeri_cj(basis::NParticleBasis, f::Function)
         if idx_create!=0 && idx_destroy!=0
             Ni = basis.occupations[n][idx_create]
             Nj = basis.occupations[n][idx_destroy]+1
-            #println("Ni=",Ni,";Nj=",Nj,": f(",idx_create,",",idx_destroy,") = ",f(idx_create,idx_destroy))
             x[m,n] += f(idx_create,idx_destroy)*sqrt(Ni*Nj)
         end
     end
@@ -105,5 +104,35 @@ function weighted_cdaggeri_cj(basis::NParticleBasis, f::Function)
 end
 
 
+function cdaggeri_cj(basis::NParticleBasis, i::Int, j::Int)
+    result = Operator(basis)
+    N = length(basis.occupations)
+    for n=1:N, m=1:N
+        occ_n = deepcopy(basis.occupations[n])
+        occ_m = deepcopy(basis.occupations[m])
+        Ni = occ_n[i]
+        Nj = occ_m[j]
+        if Ni==0 || Nj==0
+            continue
+        end
+        occ_n[i] -= 1
+        occ_m[j] -= 1
+        if occ_n == occ_m
+            result.data[n,m] = sqrt(Ni*Nj)
+        end
+    end
+    return result
+end
+
+function particledensity(basis_functions::Vector, rho)
+    N_positionpoints = length(basis_functions[1])
+    n = zeros(Float64, N_positionpoints)
+    for i=1:N_positionpoints
+        f(idx_create::Int, idx_destroy::Int) = basis_functions[idx_create][i]*basis_functions[idx_destroy][i]
+        n_op = weighted_cdaggeri_cj(basis(rho), f)
+        n[i] = real(expect(n_op, rho))
+    end
+    return n
+end
 
 end

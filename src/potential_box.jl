@@ -6,6 +6,7 @@ type Potential
     A::Function
     B::Function
     E::Function
+    basis_function::Function
 end
 
 fcos(s, n::Int, i::Int, j::Int) = cospi((i+j)/2)*sinc((i+j+2*n*s)/2)
@@ -34,6 +35,17 @@ end
 
 E(E0, i::Int) = E0*i^2
 
-const BoxPotential = Potential(A, B, E)
+function basis_function(index::Int, x)
+    k = pi*index/2
+    if (x<-1 || x>1)
+        return zero(x)
+    else
+        return 1./sqrt(2)*sin(k*(x+1))
+    end
+end
+
+basis_function(index::Int, x::Vector) = map(xi->basis_function(index, xi), x)
+
+const BoxPotential = Potential(A, B, E, basis_function)
 
 end
