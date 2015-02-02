@@ -1,6 +1,6 @@
 module quantum
 
-export A, B, basis, Hamiltonian, Jump_operators, timeevolution_master, timeevolution_mcwf
+export A, B, basis, particledensity, Hamiltonian, Jump_operators, timeevolution_master, timeevolution_mcwf
 
 using quantumoptics
 using ..system
@@ -62,10 +62,12 @@ function Jump_operators(system::MultimodeSystem)
     return J
 end
 
-function particledensity(system::Particles, x::Vector{Float64}, rho)
+function multiparticlebasis.particledensity(system::Particles, x::Vector{Float64}, rho::AbstractOperator)
+    @assert basis(system)==rho.basis_l
+    @assert basis(system)==rho.basis_r
     basis_functions = Vector{Float64}[]
-    for i=1:sys.Nlevels
-        push!(basis_functions, sys.potential.basis_function(i, x))
+    for i=1:system.Nlevels
+        push!(basis_functions, system.potential.basis_function(i, x))
     end
     return particledensity(basis_functions, rho)
 end
