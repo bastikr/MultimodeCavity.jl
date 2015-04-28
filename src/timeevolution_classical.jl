@@ -1,46 +1,12 @@
-module semiclassical
+module timeevolution_classical
 
-export SemiclassicalState
-
-using ..system_semiclassical
+export timeevolution, timeevolution_stochastic
 
 using quantumoptics
-using ArrayViews
+using ..system_classical
 
-type SemiclassicalState
-    particlenumber::Int
-    cavitymodenumber::Int
-    data::Vector{Float64}
-end
 
-SemiclassicalState(particlenumber::Int, cavitymodenumber::Int) = SemiclassicalState(particlenumber::Int, cavitymodenumber::Int, zeros(Float64, 2*(particlenumber + cavitymodenumber)))
-
-x(state::SemiclassicalState) = view(state.data, 1:state.particlenumber)
-v(state::SemiclassicalState) = view(state.data, state.particlenumber+1:2*state.particlenumber)
-αn(state::SemiclassicalState, n::Int) = view(state.data, 2*state.particlenumber+2*(n-1)+1:2*state.particlenumber+2*n)
-
-splitstate(N::Int, M::Int, data::Vector{Float64}) = view(data, 1:N), view(data, N+1:2*N), view(data, 2*N+1:2*(N+M))
-
-function step(f, κ::Vector{Float64}, t0::Float64, dt::Float64, state0::Vector{Float64})
-    T, states = quantumoptics.ode_dopri.ode(f, [t0, t0+dt], state0, display_initialvalue=false)
-    state1 = states[1]
-    return state1
-end
-
-function ode_stochastic(f, κ::Vector{Float64}, dt::Float64, T::Vector{Float64}, state0::Vector{Float64}, fout)
-    t = T[1]
-    tfinal = T[end]
-    for tfixed = T[2:end]
-        while t<tfixed
-            tnext = min(t+dt, tfixed)
-            state0 = step(f, κ, t, tnext-t, state0)
-            t = tnext
-        end
-        fout(t, state0)
-    end
-end
-
-function timeevolution(T, S::system_semiclassical.MultimodeSystem, state0::SemiclassicalState; fout=nothing)
+function timeevolution(T, S::MultimodeSystem, state0::ClassicalState; fout=nothing)
     T = float(T)
     Nparticles = state0.particlenumber
     Ncavitymodes = state0.cavitymodenumber
@@ -75,19 +41,39 @@ function timeevolution(T, S::system_semiclassical.MultimodeSystem, state0::Semic
     end
     if fout==nothing
         t_out = Float64[]
-        state_out = SemiclassicalState[]
+        state_out = ClassicalState[]
         function fout_(t, y::Vector{Float64})
             push!(t_out, t)
-            push!(state_out, SemiclassicalState(Nparticles, Ncavitymodes, deepcopy(y)))
+            push!(state_out, ClassicalState(Nparticles, Ncavitymodes, deepcopy(y)))
         end
         quantumoptics.ode_dopri.ode(f, T, state0.data; fout=fout_)
         return t_out, state_out
     else
-        return quantumoptics.ode_dopri.ode(f, T, state0.data; fout=(t,y)->fout(t, MFState(Nparticlemodes, Ncavitymodes, y)))
+        return quantumoptics.ode_dopri.ode(f, T, state0.data; fout=(t,y)->fout(t, ClassicalState(Nparticlemodes, Ncavitymodes, y)))
     end
 end
 
-function timeevolution_stochastic(T, S::system_semiclassical.MultimodeSystem, state0::SemiclassicalState; fout=nothing, dt=1e-3)
+
+function step(f, κ::Vector{Float64}, t0::Float64, dt::Float64, state0::Vector{Float64})
+    T, states = quantumoptics.ode_dopri.ode(f, [t0, t0+dt], state0, display_initialvalue=false)
+    state1 = states[1]
+    return state1
+end
+
+function ode_stochastic(f, κ::Vector{Float64}, dt::Float64, T::Vector{Float64}, state0::Vector{Float64}, fout)
+    t = T[1]
+    tfinal = T[end]
+    for tfixed = T[2:end]
+        while t<tfixed
+            tnext = min(t+dt, tfixed)
+            state0 = step(f, κ, t, tnext-t, state0)
+            t = tnext
+        end
+        fout(t, state0)
+    end
+end
+
+function timeevolution_stochastic(T, S::MultimodeSystem, state0::ClassicalState; fout=nothing, dt=1e-3)
     T = float(T)
     Nparticles = state0.particlenumber
     Ncavitymodes = state0.cavitymodenumber
@@ -123,10 +109,10 @@ function timeevolution_stochastic(T, S::system_semiclassical.MultimodeSystem, st
     κ = Float64[S.modes[n].kappa for n=1:Ncavitymodes]
     if fout==nothing
         t_out = Float64[]
-        state_out = SemiclassicalState[]
+        state_out = ClassicalState[]
         function fout_(t, y::Vector{Float64})
             push!(t_out, t)
-            push!(state_out, SemiclassicalState(Nparticles, Ncavitymodes, deepcopy(y)))
+            push!(state_out, ClassicalState(Nparticles, Ncavitymodes, deepcopy(y)))
         end
         ode_stochastic(f, κ, dt, T, state0.data, fout_)
         return t_out, state_out
@@ -135,4 +121,4 @@ function timeevolution_stochastic(T, S::system_semiclassical.MultimodeSystem, st
     end
 end
 
-end #module
+end # module

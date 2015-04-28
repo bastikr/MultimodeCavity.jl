@@ -5,15 +5,15 @@ using Optim
 # Particles
 const E0 = 0.2
 const Nparticles = 1
-const Nlevels = 14
+const Nlevels = 12
 const potential = multimode.BoxPotential
 const particles = multimode.Bosons(Nparticles, Nlevels, E0, potential)
 
 # Cavity mode
 const index1 = 3
-const cavitymodes1 = 18
-const delta1 = -1.
-const eta1 = 3.0
+const cavitymodes1 = 12
+const delta1 = -2.
+const eta1 = 4.0
 const kappa1 = 1.
 const U0_1 = 0
 const mode1 = multimode.CavityMode(index1, cavitymodes1, delta1, eta1, kappa1, U0_1)
@@ -30,14 +30,81 @@ basis_mode1 = multimode.basis(mode1)
 const ψ₀ = basis_ket(basis_particles, 1) ⊗ basis_ket(basis_mode1, 1)
 const ρ₀ = ψ₀ ⊗ dagger(ψ₀)
 
-T = [0.,200.0]
+function fmin(x)
+    N = length(x)//2
+    y = x[1:N] + 1im*x[N+1:end]
+    y /= norm(y,2)
+    return multimode.multimode_steadystate.Hfunctional(system, Ket(basis_particles, y))
+end
+y0 = basis_ket(basis_particles, 1).data
+N = length(y0)
+x0 = [real(y0),imag(y0)]
+x = Optim.optimize(fmin, x0).minimum
+y = x[1:N] + 1im*x[N+1:end]
+y /= norm(y,2)
+x1_opt = Ket(basis_particles, y)
+ρg1_opt = x1_opt ⊗ dagger(x1_opt)
 
-tout, ρt = multimode.timeevolution_master(system, T, ρ₀, reltol=1e-7)
+
+function fmin2(x)
+    N = length(x)//2
+    y = x[1:N] + 1im*x[N+1:end]
+    y /= norm(y,2)
+    y = Ket(basis_particles, y)
+    y_ = y - (dagger(x1_opt)*y)*x1_opt
+    y_ /= sqrt(dagger(y_)*y_)
+    return multimode.multimode_steadystate.Hfunctional(system, y_)
+end
+y0 = basis_ket(basis_particles, 1).data
+N = length(y0)
+x0 = [real(y0),imag(y0)]
+x = Optim.optimize(fmin2, x0).minimum
+y = x[1:N] + 1im*x[N+1:end]
+y /= norm(y,2)
+y = Ket(basis_particles, y)
+y_ = y - (dagger(x1_opt)*y)*x1_opt
+n = sqrt(dagger(y_)*y_)
+y_ /= n
+println("Norm: ", dagger(y_)*y_)
+x2_opt = y_
+ρg2_opt = x2_opt ⊗ dagger(x2_opt)
+
+
+function fmin3(x)
+    N = length(x)//2
+    y = x[1:N] + 1im*x[N+1:end]
+    y /= norm(y,2)
+    y = Ket(basis_particles, y)
+    y_ = y - (dagger(x1_opt)*y)*x1_opt - (dagger(x2_opt)*y)*x2_opt
+    y_ /= sqrt(dagger(y_)*y_)
+    return multimode.multimode_steadystate.Hfunctional(system, y_)
+end
+y0 = basis_ket(basis_particles, 1).data
+N = length(y0)
+x0 = [real(y0),imag(y0)]
+x = Optim.optimize(fmin3, x0).minimum
+y = x[1:N] + 1im*x[N+1:end]
+y /= norm(y,2)
+y = Ket(basis_particles, y)
+y_ = y - (dagger(x1_opt)*y)*x1_opt - (dagger(x2_opt)*y)*x2_opt
+n = sqrt(dagger(y_)*y_)
+y_ /= n
+println("Norm: ", dagger(y_)*y_)
+x3_opt = y_
+ρg3_opt = x3_opt ⊗ dagger(x3_opt)
+
+
+T = [0.,100.0]
+
+tout, ρt = multimode.timeevolution_master(system, T, ρ₀)
+
 ρp = ptrace(ρt[end], [2])
 ρf = ptrace(ρt[end], [1])
 ρf /= trace(ρf)
 
 U, S, V = svd(ρt[end].data)
+println(S[1:5])
+
 
 x1 = Ket(ρ₀.basis_l, U[:,1])
 x2 = Ket(ρ₀.basis_l, U[:,2])
@@ -51,36 +118,131 @@ x5 = Ket(ρ₀.basis_l, U[:,5])
 ρg4 = x4 ⊗ dagger(x4)
 ρg5 = x5 ⊗ dagger(x5)
 
-ρg = S[1]*ρg1 + S[2]*ρg2
+ρf1 = ptrace(ρg1, [1])
+ρf2 = ptrace(ρg2, [1])
+ρf3 = ptrace(ρg3, [1])
+ρf4 = ptrace(ρg4, [1])
+ρf5 = ptrace(ρg5, [1])
+
+function f1(x)
+    state = coherent_state(basis_mode1, complex(x[1], x[2]))
+    return tracedistance(state ⊗ dagger(state), ρf1)
+end
+x = Optim.optimize(f1, Float64[0,0]).minimum
+α1 = x[1] + 1im*x[2]
+
+function f2(x)
+    state = coherent_state(basis_mode1, complex(x[1], x[2]))
+    return tracedistance(state ⊗ dagger(state), ρf2)
+end
+x = Optim.optimize(f2, Float64[0,0]).minimum
+α2 = x[1] + 1im*x[2]
+
+function f3(x)
+    state = coherent_state(basis_mode1, complex(x[1], x[2]))
+    return tracedistance(state ⊗ dagger(state), ρf3)
+end
+x = Optim.optimize(f3, Float64[0,0]).minimum
+α3 = x[1] + 1im*x[2]
+
+function f4(x)
+    state = coherent_state(basis_mode1, complex(x[1], x[2]))
+    return tracedistance(state ⊗ dagger(state), ρf4)
+end
+x = Optim.optimize(f4, Float64[0,0]).minimum
+α4 = x[1] + 1im*x[2]
+
+function f5(x)
+    state = coherent_state(basis_mode1, complex(x[1], x[2]))
+    return tracedistance(state ⊗ dagger(state), ρf5)
+end
+x = Optim.optimize(f5, Float64[0,0]).minimum
+α5 = x[1] + 1im*x[2]
 
 
-# println(tracedistance(ρg, ρt[end]))
-# @assert false
 
-# function guess_rho_f(alpha)
-#     state_p = coherent_state(basis_mode1, alpha)
-#     state_m = coherent_state(basis_mode1, -alpha)
-#     ρf_try = 0.5*state_m ⊗ dagger(state_m) + 0.5*state_p ⊗ dagger(state_p)
-#     ρf_try /= trace(ρf_try)
-#     return ρf_try
-# end
+println("α₁ = ", α1)
+println("α₂ = ", α2)
+println("α₃ = ", α3)
+println("α₄ = ", α4)
+println("α₅ = ", α5)
 
-# function f1(x)
-#     state = coherent_state(basis_mode1, complex(x[1], x[2]))
-#     return tracedistance(state ⊗ dagger(state), ρf)
-# end
+Halpha1 = multimode.multimode_steadystate.Halpha(system, α1)
+Halpha2 = multimode.multimode_steadystate.Halpha(system, α2)
+Halpha3 = multimode.multimode_steadystate.Halpha(system, α3)
 
-# function f2(x)
-#     return tracedistance(guess_rho_f(complex(x[1], x[2])), ρf)
-# end
+B_ = multimode.quantum.B(1, system)
+D, V = eig(Hermitian(Halpha1.data))
+x1_ = Ket(basis_particles, vec(V[:,1]))
+x2_ = Ket(basis_particles, vec(V[:,2]))
+x3_ = Ket(basis_particles, vec(V[:,3]))
+x4_ = Ket(basis_particles, vec(V[:,4]))
+x5_ = Ket(basis_particles, vec(V[:,5]))
 
-# #println(Optim.optimize(f1, Float64[0,0]))
-# x = Optim.optimize(f2, Float64[0,0]).minimum
-# alpha0 = complex(x[1], x[2])
-# rho_f_try = guess_rho_f(alpha0)
-# #
+println("α₁ = ", eta1*expect(B_, x1_)/(delta1+1im*kappa1))
+println("α₂ = ", eta1*expect(B_, x2_)/(delta1+1im*kappa1))
+println("α₃ = ", eta1*expect(B_, x3_)/(delta1+1im*kappa1))
+println("α₄ = ", eta1*expect(B_, x4_)/(delta1+1im*kappa1))
+println("α₅ = ", eta1*expect(B_, x5_)/(delta1+1im*kappa1))
+
+println("α₁opt = ", eta1*expect(B_, x1_opt)/(delta1+1im*kappa1))
+println("α₂opt = ", eta1*expect(B_, x2_opt)/(delta1+1im*kappa1))
+println("α₃opt = ", eta1*expect(B_, x3_opt)/(delta1+1im*kappa1))
+
+ρg1_ = x1_ ⊗ dagger(x1_)
+ρg2_ = x2_ ⊗ dagger(x2_)
+ρg3_ = x3_ ⊗ dagger(x3_)
+ρg4_ = x4_ ⊗ dagger(x4_)
+ρg5_ = x5_ ⊗ dagger(x5_)
 
 x = linspace(-1,1,100)
+
+n1 = multimode.particledensity(particles, x, ptrace(ρg1, [2]))
+n2 = multimode.particledensity(particles, x, ptrace(ρg2, [2]))
+n3 = multimode.particledensity(particles, x, ptrace(ρg3, [2]))
+n4 = multimode.particledensity(particles, x, ptrace(ρg4, [2]))
+n5 = multimode.particledensity(particles, x, ptrace(ρg5, [2]))
+
+n1_ = multimode.particledensity(particles, x, ρg1_)
+n2_ = multimode.particledensity(particles, x, ρg2_)
+n3_ = multimode.particledensity(particles, x, ρg3_)
+n4_ = multimode.particledensity(particles, x, ρg4_)
+n5_ = multimode.particledensity(particles, x, ρg5_)
+
+n1_opt = multimode.particledensity(particles, x, ρg1_opt)
+n2_opt = multimode.particledensity(particles, x, ρg2_opt)
+n3_opt = multimode.particledensity(particles, x, ρg3_opt)
+
+using PyCall
+@pyimport matplotlib.pyplot as plt
+plt.figure()
+plt.plot(x, n1, "k--")
+plt.plot(x, n1_, "b")
+plt.plot(x, n1_opt, "b--")
+plt.plot(x, n2, "k--")
+plt.plot(x, n2_opt, "g--")
+plt.plot(x, n3_opt, "r--")
+plt.plot(x, n2_, "g")
+# plt.plot(x, n3, "k--")
+plt.plot(x, n3_, "r")
+# plt.plot(x, n4, "k--")
+# plt.plot(x, n4_, "c")
+# plt.plot(x, n5, "k--")
+# plt.plot(x, n5_, "orange")
+plt.show()
+@assert false
+
+tout, ρt = multimode.timeevolution_master(system, T, ρg1)
+U, S, V = svd(ρt[end].data)
+
+println(S[1:5])
+
+
+
+ρg = S[1]*ρg1 + S[2]*ρg2
+
+x = linspace(-1,1,100)
+n1 = multimode.particledensity(particles, x, ptrace(ρg1, [2]))
 n1 = multimode.particledensity(particles, x, ptrace(ρg1, [2]))
 n2 = multimode.particledensity(particles, x, ptrace(ρg2, [2]))
 n3 = multimode.particledensity(particles, x, ptrace(ρg3, [2]))

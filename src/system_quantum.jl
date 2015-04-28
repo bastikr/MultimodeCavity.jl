@@ -1,15 +1,57 @@
-module quantum
+module system_quantum
 
-export A, B, basis, particledensity, Hamiltonian, Jump_operators, timeevolution_master, timeevolution_mcwf
+export Bosons, Fermions, CavityMode, MultimodeSystem,
+        A, B, basis, particledensity, Hamiltonian, Jump_operators
+
 
 using quantumoptics
-using ..system
+using ..potentials
 using ..multiparticlebasis
+
+
+# Define system
+
+abstract Particles
+
+type Bosons <: Particles
+    Nparticles::Int
+    Nlevels::Int
+    E0::Float64
+    potential::Potential
+end
+
+type Fermions <: Particles
+    Nparticles::Int
+    Nlevels::Int
+    E0::Float64
+    potential::Potential
+end
+
+type CavityMode
+    index::Int
+    Nmodes::Int
+    delta::Float64
+    eta::Float64
+    kappa::Float64
+    U0::Float64
+end
+
+type MultimodeSystem
+    scaling::Float64
+    particles::Particles
+    modes::Vector{CavityMode}
+end
+
+
+# Define basis of Hilbert space
 
 basis(s::Bosons) = BosonicBasis(s.Nparticles, s.Nlevels)
 basis(s::Fermions) = FermionicBasis(s.Nparticles, s.Nlevels)
 basis(s::CavityMode) = FockBasis(s.Nmodes)
 basis(s::MultimodeSystem) = CompositeBasis(basis(s.particles), [basis(mode) for mode=s.modes]...)
+
+
+# Define interaction between cavity modes and particles
 
 const _cicj = multiparticlebasis.weighted_cdaggeri_cj
 
@@ -18,6 +60,9 @@ A(submode::Int, system::MultimodeSystem) = A(system.scaling, system.modes[submod
 
 B(scaling::Float64, mode_index::Int, p::Particles) = _cicj(basis(p), (i,j)->p.potential.B(scaling, mode_index, i, j))
 B(submode::Int, system::MultimodeSystem) = B(system.scaling, system.modes[submode].index, system.particles)
+
+
+# Define Hamiltonian
 
 function Hamiltonian(p::Particles)
     b = basis(p)
@@ -72,34 +117,5 @@ function multiparticlebasis.particledensity(system::Particles, x::Vector{Float64
     return particledensity(basis_functions, rho)
 end
 
-# function particle_density(system, rho_p, resolution=200)
-#     X = linspace(-1, 1, resolution)
-#     Nlevels = system.particles.Nlevels
-#     basis_functions = [system.particles.potential.basis_function(i, X) for i=1:Nlevels]
-#     nx = zeros(Float64, resolution)
-#     for i=1:Nlevels, j=1:Nlevels
-#         c_ij = cdaggeri_cj(system.particles.basis, i, j)
-#         vi = basis_functions[i]
-#         vj = basis_functions[j]
-#         nx += real(sum(diag((c_ij*rho_p).data)))*conj(vi).*vj
-#     end
-#     return nx
-# end
-
-function timeevolution_master(system::MultimodeSystem, T, ρ₀; kwargs...)
-    H = Hamiltonian(system)
-    Hsparse = SparseOperator(H)
-    J = Jump_operators(system)
-    Jsparse = map(SparseOperator, J)
-    return timeevolution.master(T, ρ₀, Hsparse, Jsparse; kwargs...)
-end
-
-function timeevolution_mcwf(system::MultimodeSystem, T, Ψ₀::Ket; kwargs...)
-    H = Hamiltonian(system)
-    Hsparse = SparseOperator(H)
-    J = Jump_operators(system)
-    Jsparse = map(SparseOperator, J)
-    return timeevolution.mcwf(T, Ψ₀, Hsparse, Jsparse; kwargs...)
-end
 
 end # module

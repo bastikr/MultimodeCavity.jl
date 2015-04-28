@@ -1,4 +1,8 @@
-module semiclassical_steadystate
+module steadystate_classical
+
+export OpticalPotential, evaluate_opticalpotential
+
+using ..system_classical
 
 type OpticalPotential
     N::Int
@@ -14,7 +18,10 @@ type OpticalPotential
     end
 end
 
-function evaluate_potential(U::OpticalPotential, derivative::Int, x)
+OpticalPotential(s::MultimodeSystem, state::ClassicalState) = OpticalPotential(Float64[mode.k for mode=s.modes], Float64[2*s.modes[n].eta*αn(state,n)[1] for n=1:length(s.modes)])
+
+
+function evaluate_opticalpotential(U::OpticalPotential, derivative::Int, x)
     f = 0.
     trigfunc = iseven(derivative) ? sin : cos
     sign = iseven(div(derivative, 2)) ? 1. : -1.
@@ -26,8 +33,8 @@ end
 
 function localextremum(U::OpticalPotential, x0::Float64, eps::Float64=1e-5, dxmax::Float64=1., maxiterations=100)
     function f(x::Float64)
-        a = evaluate_potential(U, 1, x)
-        b = evaluate_potential(U, 2, x)
+        a = evaluate_opticalpotential(U, 1, x)
+        b = evaluate_opticalpotential(U, 2, x)
         abs(b)<0.1 ? NaN : -a/b
     end
     fx = 1
@@ -56,9 +63,9 @@ function extrema(U::OpticalPotential)
     return solutions
 end
 
-minima(U::OpticalPotential) = filter(x->evaluate_potential(U,2,x)>0, extrema(U))
-maxima(U::OpticalPotential) = filter(x->evaluate_potential(U,2,x)<0, extrema(U))
-global_minimum(U::OpticalPotential) = (P = extrema(U); length(P)==0 ? NaN : P[indmin(evaluate_potential(U,0,P))])
-global_maximum(U::OpticalPotential) = (P = extrema(U); length(P)==0 ? NaN : P[indmax(evaluate_potential(U,0,P))])
+minima(U::OpticalPotential) = filter(x->evaluate_opticalpotential(U,2,x)>0, extrema(U))
+maxima(U::OpticalPotential) = filter(x->evaluate_opticalpotential(U,2,x)<0, extrema(U))
+global_minimum(U::OpticalPotential) = (P = extrema(U); length(P)==0 ? NaN : P[indmin(evaluate_opticalpotential(U,0,P))])
+global_maximum(U::OpticalPotential) = (P = extrema(U); length(P)==0 ? NaN : P[indmax(evaluate_opticalpotential(U,0,P))])
 
 end #module
