@@ -8,17 +8,27 @@ s = ArgParseSettings(
 @add_arg_table s begin
     "--Nparticles"
         arg_type = Int
+        required = true
     "--mass"
         arg_type = Float64
+        required = true
     "--indices"
+        required = true
     "--deltas"
+        required = true
     "--etas"
+        required = true
     "--kappas"
+        required = true
     "--U0s"
+        required = true
     "--T"
+        required = true
     "--seed"
         arg_type = Int
+        required = true
     "--o"
+        required = true
 end
 
 parameters = parse_args(s)
@@ -79,7 +89,7 @@ keyparameters = Dict(
 
 function dict2filename(d::Dict; extension=".dat")
     pairs = ["$(key)=$(item)" for (key, item) in d]
-    return join(";", sort(pairs))*extension
+    return join(sort(pairs), ";")*extension
 end
 outname = "timeevolution_"*dict2filename(keyparameters)
 outpath = joinpath(odir, outname)
