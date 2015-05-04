@@ -1,6 +1,8 @@
 module system_classical
 
-export Particles, CavityMode, MultimodeSystem, ClassicalState, x, v, αn, splitstate
+export Particles, CavityMode, MultimodeSystem,
+        ClassicalState, x, v, αn, splitstate,
+        orderparameter, orderparameters
 
 using ArrayViews
 
