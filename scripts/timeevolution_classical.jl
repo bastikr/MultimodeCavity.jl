@@ -69,7 +69,7 @@ for i=1:Nmodes
     push!(modes, multimode.classical.CavityMode(
                     float(indices[i]*pi),
                     float(deltas[i]),
-                    float(etas[i]),
+                    float(etas[i])/sqrt(Nparticles),
                     float(kappas[i]),
                     float(U0s[i])))
 end
@@ -85,6 +85,7 @@ keyparameters = Dict(
     # "kappa"=>parameters["kappas"],
     # "U0"=>parameters["U0s"],
     # "T"=>T[end],
+    "seed"=>parameters["seed"],
     )
 
 function dict2filename(d::Dict; extension=".dat")
