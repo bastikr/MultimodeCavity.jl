@@ -2,7 +2,7 @@ module timeevolution_classical
 
 export timeevolution, timeevolution_stochastic
 
-using quantumoptics
+using QuantumOptics
 using ..system_classical
 
 
@@ -46,16 +46,16 @@ function timeevolution(T, S::MultimodeSystem, state0::ClassicalState; fout=nothi
             push!(t_out, t)
             push!(state_out, ClassicalState(Nparticles, Ncavitymodes, deepcopy(y)))
         end
-        quantumoptics.ode_dopri.ode(f, T, state0.data; fout=fout_)
+        QuantumOptics.ode_dopri.ode(f, T, state0.data; fout=fout_)
         return t_out, state_out
     else
-        return quantumoptics.ode_dopri.ode(f, T, state0.data; fout=(t,y)->fout(t, ClassicalState(Nparticlemodes, Ncavitymodes, y)))
+        return QuantumOptics.ode_dopri.ode(f, T, state0.data; fout=(t,y)->fout(t, ClassicalState(Nparticlemodes, Ncavitymodes, y)))
     end
 end
 
 
 function step(f, κ::Vector{Float64}, t0::Float64, dt::Float64, state0::Vector{Float64})
-    T, states = quantumoptics.ode_dopri.ode(f, [t0, t0+dt], state0, display_initialvalue=false)
+    T, states = QuantumOptics.ode_dopri.ode(f, [t0, t0+dt], state0, display_initialvalue=false)
     state1 = states[1]
     return state1
 end

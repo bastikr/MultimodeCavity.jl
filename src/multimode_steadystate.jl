@@ -1,6 +1,6 @@
 module multimode_steadystate
 
-using quantumoptics
+using QuantumOptics
 using ..system
 using ..quantum
 

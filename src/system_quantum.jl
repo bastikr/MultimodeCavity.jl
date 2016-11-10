@@ -1,12 +1,12 @@
 module system_quantum
 
 export Bosons, Fermions, CavityMode, MultimodeSystem,
-        A, B, basis, particledensity, Hamiltonian, Jump_operators
+        An, Bn, basis, particledensity, Hamiltonian, Jump_operators
 
 
-using quantumoptics
+using QuantumOptics
 using ..potentials
-using ..multiparticlebasis
+# using ..multiparticlebasis
 
 
 # Define system
@@ -45,36 +45,35 @@ end
 
 # Define basis of Hilbert space
 
-basis(s::Bosons) = BosonicBasis(s.Nparticles, s.Nlevels)
-basis(s::Fermions) = FermionicBasis(s.Nparticles, s.Nlevels)
+basis(s::Bosons) = BosonicNParticleBasis(s.Nparticles, s.Nlevels)
+basis(s::Fermions) = FermionicNParticleBasis(s.Nparticles, s.Nlevels)
 basis(s::CavityMode) = FockBasis(s.Nmodes)
 basis(s::MultimodeSystem) = CompositeBasis(basis(s.particles), [basis(mode) for mode=s.modes]...)
 
 
 # Define interaction between cavity modes and particles
 
-const _cicj = multiparticlebasis.weighted_cdaggeri_cj
+function An(scaling, n, p)
+    M = [p.potential.A(scaling, mode_index, i, j) for i=1:p.Nlevels, j=1:p.Nlevels]
+    op = DenseOperator(GenericBasis(p.Nlevels), complex(M))
+    nparticleoperator_1(basis(p), op)
+end
 
-A(scaling::Float64, mode_index::Int, p::Particles) = _cicj(basis(p), (i,j)->p.potential.A(scaling, mode_index, i, j))
-A(submode::Int, system::MultimodeSystem) = A(system.scaling, system.modes[submode].index, system.particles)
+function Bn(scaling, n, p)
+    M = [p.potential.B(scaling, n, i, j) for i=1:p.Nlevels, j=1:p.Nlevels]
+    op = DenseOperator(GenericBasis(p.Nlevels), complex(M))
+    nparticleoperator_1(basis(p), op)
+end
 
-B(scaling::Float64, mode_index::Int, p::Particles) = _cicj(basis(p), (i,j)->p.potential.B(scaling, mode_index, i, j))
-B(submode::Int, system::MultimodeSystem) = B(system.scaling, system.modes[submode].index, system.particles)
+An(submode::Int, system::MultimodeSystem) = An(system.scaling, system.modes[submode].index, system.particles)
+Bn(submode::Int, system::MultimodeSystem) = Bn(system.scaling, system.modes[submode].index, system.particles)
 
 
 # Define Hamiltonian
-
 function Hamiltonian(p::Particles)
-    b = basis(p)
-    N = length(b.occupations)
-    energies = zeros(Complex128, N)
-    for i=1:N
-        occ = b.occupations[i]
-        for j=1:length(occ)
-            energies[i] += occ[j]*p.potential.E(p.E0, j)
-        end
-    end
-    return Operator(b, diagm(energies))
+    M = [p.potential.E(p.E0, j) for j=1:p.Nlevels]
+    op = DenseOperator(GenericBasis(p.Nlevels), spdiagm(complex(M)))
+    nparticleoperator_1(basis(p), op)
 end
 
 Hamiltonian(mode::CavityMode) = (create(basis(mode))*destroy(basis(mode))*(-mode.delta))
@@ -86,10 +85,10 @@ function Hamiltonian(system::MultimodeSystem)
     for i=1:length(system.modes)
         mode = system.modes[i]
         modebasis = basis(mode)
-        An = A(system.scaling, mode.index, system.particles)
-        Bn = B(system.scaling, mode.index, system.particles)
-        H += embed(b, [1,i+1], [An,number(modebasis)*mode.U0])
-        H += embed(b, [1,i+1], [Bn,(destroy(modebasis)+create(modebasis))*mode.eta])
+        An_ = An(system.scaling, mode.index, system.particles)
+        Bn_ = Bn(system.scaling, mode.index, system.particles)
+        H += embed(b, [1,i+1], [An_,number(modebasis)*mode.U0])
+        H += embed(b, [1,i+1], [Bn_,(destroy(modebasis)+create(modebasis))*mode.eta])
         H += embed(b, i+1, Hamiltonian(mode))
     end
     return H
@@ -107,15 +106,15 @@ function Jump_operators(system::MultimodeSystem)
     return J
 end
 
-function multiparticlebasis.particledensity(system::Particles, x::Vector{Float64}, rho::AbstractOperator)
-    @assert basis(system)==rho.basis_l
-    @assert basis(system)==rho.basis_r
-    basis_functions = Vector{Float64}[]
-    for i=1:system.Nlevels
-        push!(basis_functions, system.potential.basis_function(i, x))
-    end
-    return particledensity(basis_functions, rho)
-end
+# function multiparticlebasis.particledensity(system::Particles, x::Vector{Float64}, rho::Operator)
+#     @assert basis(system)==rho.basis_l
+#     @assert basis(system)==rho.basis_r
+#     basis_functions = Vector{Float64}[]
+#     for i=1:system.Nlevels
+#         push!(basis_functions, system.potential.basis_function(i, x))
+#     end
+#     return particledensity(basis_functions, rho)
+# end
 
 
 end # module

@@ -2,7 +2,7 @@ module timeevolution_quantum
 
 export timeevolution_master, timeevolution_mcwf
 
-using quantumoptics
+using QuantumOptics
 using ..system_quantum
 
 

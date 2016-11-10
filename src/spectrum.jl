@@ -1,5 +1,5 @@
 using multimode
-using quantumoptics
+using QuantumOptics
 
 # Particles
 const E0 = 0.2

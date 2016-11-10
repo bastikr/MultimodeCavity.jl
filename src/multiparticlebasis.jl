@@ -1,60 +1,109 @@
 module multiparticlebasis
 
-export NParticleBasis, BosonicBasis, FermionicBasis, weighted_cdaggeri_cj, cdaggeri_cj, particledensity
+export NParticleBasis, BosonicNParticleBasis, FermionicNParticleBasis, weighted_cdaggeri_cj, cdaggeri_cj, particledensity
 
-using quantumoptics
+using QuantumOptics
 
-function distribute_bosons(Nparticles::Int, Nlevels::Int, index::Int=1, occupations::Vector{Int}=zeros(Int,Nlevels), results::Vector{Vector{Int}}=Vector{Int}[])
-    if index==Nlevels
-        occupations[index] = Nparticles
+
+function distribute_bosons(particlenumber::Int, singleparticledimension::Int, index::Int=1, occupations::Vector{Int}=zeros(Int,singleparticledimension), results::Vector{Vector{Int}}=Vector{Int}[])
+    if index==singleparticledimension
+        occupations[index] = particlenumber
         push!(results, copy(occupations))
     else
-        for n=Nparticles:-1:0
+        for n=particlenumber:-1:0
             occupations[index] = n
-            distribute_bosons(Nparticles-n, Nlevels, index+1, occupations, results)
+            distribute_bosons(particlenumber-n, singleparticledimension, index+1, occupations, results)
         end
     end
     return results
 end
 
-function distribute_fermions(Nparticles::Int, Nlevels::Int, index::Int=1, occupations::Vector{Int}=zeros(Int,Nlevels), results::Vector{Vector{Int}}=Vector{Int}[])
-    if (Nlevels-index)+1<Nparticles
+function distribute_fermions(particlenumber::Int, singleparticledimension::Int, index::Int=1, occupations::Vector{Int}=zeros(Int,singleparticledimension), results::Vector{Vector{Int}}=Vector{Int}[])
+    if (singleparticledimension-index)+1<particlenumber
         return results
     end
-    if index==Nlevels
-        occupations[index] = Nparticles
+    if index==singleparticledimension
+        occupations[index] = particlenumber
         push!(results, copy(occupations))
     else
-        for n=min(1,Nparticles):-1:0
+        for n=min(1,particlenumber):-1:0
             occupations[index] = n
-            distribute_fermions(Nparticles-n, Nlevels, index+1, occupations, results)
+            distribute_fermions(particlenumber-n, singleparticledimension, index+1, occupations, results)
         end
     end
     return results
 end
+
 
 abstract NParticleBasis <: Basis
 
-type BosonicBasis <: NParticleBasis
+type BosonicNParticleBasis <: NParticleBasis
     shape::Vector{Int}
-    Nparticles::Int
-    Nlevels::Int
+    particlenumber::Int
+    particlebasis::Basis
     occupations::Vector{Vector{Int}}
-    BosonicBasis(Nparticles, Nlevels, occupations) = new([length(occupations)], Nparticles, Nlevels, occupations)    
+    function BosonicNParticleBasis(particlenumber, particlebasis, occupations)
+        if particlenumber < 0
+            throw(ArgumentError("Can't have less than zero particles."))
+        end
+        for occupation=occupations
+            if length(particlebasis) != length(occupation)
+                throw(ArgumentError("Dimension of single particle basis has to be equal to the dimension of the N-particle basis vector."))
+            end
+            if any(occupation.<=0)
+                throw(ArgumentError("Occupation numbers smaller than zero not possible."))
+            end
+            if sum(occupation) != particlenumber
+                throw(ArgumentError("Total occupation has to be equal to the particle number."))
+            end
+        end
+        new([length(particlebasis)], particlenumber, particlebasis, occupations)
+    end
 end
 
-type FermionicBasis <: NParticleBasis
+type FermionicNParticleBasis <: NParticleBasis
     shape::Vector{Int}
-    Nparticles::Int
-    Nlevels::Int
+    particlenumber::Int
+    particlebasis::Basis
     occupations::Vector{Vector{Int}}
-    FermionicBasis(Nparticles, Nlevels, occupations) = new([length(occupations)], Nparticles, Nlevels, occupations)
+    function FermionicNParticleBasis(particlenumber::Int, particlebasis::Basis, occupations::Vector{Vector{Int}})
+        if particlenumber < 0
+            throw(ArgumentError("Can't have less than zero particles."))
+        end
+        for occupation=occupations
+            if length(particlebasis) != length(occupation)
+                throw(ArgumentError("Dimension of single particle basis has to be equal to the dimension of the N-particle basis vector."))
+            end
+            if any(occupation.<=0)
+                throw(ArgumentError("Occupation numbers smaller than zero not possible."))
+            end
+            if sum(occupation) != particlenumber
+                throw(ArgumentError("Total occupation has to be equal to the particle number."))
+            end
+            if any(occupation.>1)
+                throw(ArgumentError("Occupation numbers greater than zero not possible for Fermions."))
+            end
+        end
+        new([length(particlebasis)], particlenumber, particlebasis, occupations)
+    end
 end
 
-BosonicBasis(Nparticles::Int, Nlevels::Int) = BosonicBasis(Nparticles, Nlevels, distribute_bosons(Nparticles, Nlevels))
-FermionicBasis(Nparticles::Int, Nlevels::Int) = FermionicBasis(Nparticles, Nlevels, distribute_fermions(Nparticles, Nlevels))
+BosonicNParticleBasis(particlenumber::Int, particlebasisdimension::Int) = BosonicNParticleBasis(particlenumber, GenericBasis([particlebasisdimension]), distribute_bosons(particlenumber, particlebasisdimension))
+FermionicNParticleBasis(particlenumber::Int, particlebasisdimension::Int) = FermionicNParticleBasis(particlenumber, GenericBasis([particlebasisdimension]), distribute_fermions(particlenumber, particlebasisdimension))
 
-=={T<:NParticleBasis}(b1::T, b2::T) = (b1.Nparticles==b2.Nparticles && b1.Nlevels==b2.Nlevels)
+BosonicNParticleBasis(particlenumber::Int, particlebasis::Basis) = BosonicNParticleBasis(particlenumber, particlebasis, distribute_bosons(particlenumber, length(particlebasis)))
+FermionicNParticleBasis(particlenumber::Int, particlebasis::Basis) = FermionicNParticleBasis(particlenumber, particlebasis, distribute_fermions(particlenumber, length(particlebasis)))
+
+
+=={T<:NParticleBasis}(b1::T, b2::T) = (b1.particlenumber==b2.particlenumber && b1.particlebasis==b2.particlebasis)
+
+function multiparticleoperator(multiparticlebasis::NParticleBasis, op::Operator, rank::Int)
+    subbasis = [multiparticlebasis.particlebasis for i=1:N]
+    particlebasisdimension = length(multiparticlebasis.particlebasis)
+    for indices=product([particlebasisdimension for i=1:N]...)
+
+    end
+end
 
 function cdaggeri_cj(m::Int,n::Int,occ_m::Vector{Int},occ_n::Vector{Int})
     idx_create = 0
@@ -89,7 +138,7 @@ function weighted_cdaggeri_cj(basis::NParticleBasis, f::Function)
     N = basis.shape[1]
     for m=1:N, n=1:N
         if m==n
-            for i=1:basis.Nlevels
+            for i=1:basis.singleparticledimension
                 x[m,m] += f(i,i)*basis.occupations[m][i]
             end
         end

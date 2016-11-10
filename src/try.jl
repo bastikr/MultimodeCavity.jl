@@ -1,4 +1,4 @@
-using quantumoptics
+using QuantumOptics
 using multimode
 using Optim
 

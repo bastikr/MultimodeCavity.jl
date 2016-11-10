@@ -1,5 +1,5 @@
 using multimode
-using quantumoptics
+using QuantumOptics
 
 E0 = 0.2
 s = 0.25
@@ -13,7 +13,7 @@ eta1 = 2.0
 kappa1 = 1.
 U0_1 = 0.
 
-function quantumoptics.qfunc(system)
+function QuantumOptics.qfunc(system)
     Ψ₀ = basis_ket(system.basis, 1)
     ρ₀ = Ψ₀⊗dagger(Ψ₀)
     Tss = [0,100]
