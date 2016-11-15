@@ -2,7 +2,7 @@ module steadystate_classical
 
 export OpticalPotential, evaluate_opticalpotential
 
-using ..system_classical
+using ..classical
 
 type OpticalPotential
     N::Int

@@ -1,13 +1,12 @@
-module multimode
+module MultimodeCavity
 
 export potentials, BoxPotential,
-        system_quantum,
-        system_classical
+        quantum, classical
 
 include("potential_box.jl")
 # include("multiparticlebasis.jl")
-include("system_quantum.jl")
-include("system_classical.jl")
+include("quantum.jl")
+include("classical.jl")
 
 include("timeevolution_quantum.jl")
 include("timeevolution_classical.jl")
@@ -15,8 +14,8 @@ include("steadystate_classical.jl")
 
 
 using .potentials
-using .system_quantum
-using .system_classical
+using .quantum
+using .classical
 using .timeevolution_quantum
 using .timeevolution_classical
 using .steadystate_classical

@@ -3,7 +3,7 @@ module timeevolution_classical
 export timeevolution, timeevolution_stochastic
 
 using QuantumOptics
-using ..system_classical
+using ..classical
 
 
 function timeevolution(T, S::MultimodeSystem, state0::ClassicalState; fout=nothing)

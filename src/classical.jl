@@ -1,4 +1,4 @@
-module system_classical
+module classical
 
 export Particles, CavityMode, MultimodeSystem,
         ClassicalState, x, v, αn, splitstate,

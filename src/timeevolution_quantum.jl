@@ -3,7 +3,7 @@ module timeevolution_quantum
 export timeevolution_master, timeevolution_mcwf
 
 using QuantumOptics
-using ..system_quantum
+using ..quantum
 
 
 function timeevolution_master(system::MultimodeSystem, T, ρ₀; kwargs...)
