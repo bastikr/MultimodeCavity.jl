@@ -34,7 +34,7 @@ const ρ₀ = ψ₀ ⊗ dagger(ψ₀)
 
 T = [0.,10.0]
 
-tout, ρt = mm.timeevolution_master(system, T, ρ₀, reltol=1e-7)
+tout, ρt = mm.quantum.timeevolution_master(system, T, ρ₀, reltol=1e-7)
 ρp = ptrace(ρt[end], [2])
 ρf = ptrace(ρt[end], [1])
 ρf /= trace(ρf)

@@ -1,4 +1,4 @@
-module quantum
+# module quantum
 
 export Bosons, Fermions, CavityMode, MultimodeSystem,
         An, Bn, basis, particledensity, Hamiltonian, Jump_operators
@@ -106,6 +106,17 @@ function Jump_operators(system::MultimodeSystem)
     return J
 end
 
+function particledensity(basis_functions::Vector, rho)
+    N_positionpoints = length(basis_functions[1])
+    n = zeros(Float64, N_positionpoints)
+    for i=1:N_positionpoints
+        f(idx_create::Int, idx_destroy::Int) = basis_functions[idx_create][i]*basis_functions[idx_destroy][i]
+        n_op = weighted_cdaggeri_cj(basis(rho), f)
+        n[i] = real(expect(n_op, rho))
+    end
+    return n
+end
+
 function particledensity(system::Particles, x::Vector{Float64}, rho::Operator)
     @assert basis(system)==rho.basis_l
     @assert basis(system)==rho.basis_r
@@ -117,4 +128,4 @@ function particledensity(system::Particles, x::Vector{Float64}, rho::Operator)
 end
 
 
-end # module
+# end # module

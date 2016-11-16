@@ -1,4 +1,4 @@
-module classical
+# module classical
 
 export Particles, CavityMode, MultimodeSystem,
         ClassicalState, x, v, αn, splitstate,
@@ -61,4 +61,4 @@ orderparameters(K::Vector{Float64}, state::ClassicalState) = Float64[orderparame
 orderparameters(s::MultimodeSystem, state::ClassicalState) = orderparameters(Float64[mode.k for mode=s.modes], state)
 
 
-end # module
+# end # module

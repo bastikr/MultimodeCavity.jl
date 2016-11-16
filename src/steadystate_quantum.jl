@@ -1,8 +1,6 @@
-module multimode_steadystate
+# module multimode_steadystate
 
 using QuantumOptics
-using ..system
-using ..quantum
 
 function Halpha(system::MultimodeSystem, alpha::Number)
     H = Hamiltonian(system.particles)
@@ -60,4 +58,4 @@ end
 #     end
 # end
 
-end #multimode_steadystate
+# end #multimode_steadystate

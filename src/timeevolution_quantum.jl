@@ -1,9 +1,9 @@
-module timeevolution_quantum
+# module timeevolution_quantum
 
 export timeevolution_master, timeevolution_mcwf
 
 using QuantumOptics
-using ..quantum
+# using ..quantum
 
 
 function timeevolution_master(system::MultimodeSystem, T, ρ₀; kwargs...)
@@ -22,4 +22,4 @@ function timeevolution_mcwf(system::MultimodeSystem, T, Ψ₀::Ket; kwargs...)
     return timeevolution.mcwf(T, Ψ₀, Hsparse, Jsparse; kwargs...)
 end
 
-end # module
+# end # module
